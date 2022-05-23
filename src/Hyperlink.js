@@ -115,8 +115,7 @@ export default class Hyperlink {
         }
 
         // Button
-        this.nodes.buttonSave = document.createElement('button');
-        this.nodes.buttonSave.type = 'button';
+        this.nodes.buttonSave = document.createElement('a');
         this.nodes.buttonSave.classList.add(this.CSS.buttonSave);
         this.nodes.buttonSave.innerHTML = this.i18n.t('Save');
         this.nodes.buttonSave.addEventListener('click', (event) => {

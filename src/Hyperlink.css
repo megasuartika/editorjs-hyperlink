@@ -57,3 +57,8 @@
     border-radius: 5px;
     cursor: pointer;
 }
+
+.ce-inline-tool-hyperlink--button:hover {
+    color: #fff;
+    text-decoration: none;
+}
