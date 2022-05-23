@@ -1,5 +1,5 @@
 import SelectionUtils from "./SelectionUtils";
-import css from './Hyperlink.css';
+import './Hyperlink.css';
 
 export default class Hyperlink {
 
@@ -22,9 +22,11 @@ export default class Hyperlink {
             buttonModifier: 'ce-inline-tool--link',
             buttonUnlink: 'ce-inline-tool--unlink',
             input: 'ce-inline-tool-hyperlink--input',
-            selectTarget: 'ce-inline-tool-hyperlink--select-target',
-            selectRel: 'ce-inline-tool-hyperlink--select-rel',
             buttonSave: 'ce-inline-tool-hyperlink--button',
+            hyperlinkOptions: 'ce-inline-tool-hyperlink--options',
+            targetRadios: 'ce-inline-tool-hyperlink--target',
+            relCheckboxes: 'ce-inline-tool-hyperlink--rel',
+            radioOrCheckbox: 'ce-inline-tool-hyperlink--option',
         };
 
         this.targetAttributes = this.config.availableTargets || [
@@ -54,9 +56,10 @@ export default class Hyperlink {
             button: null,
             wrapper: null,
             input: null,
-            selectTarget: null,
-            selectRel: null,
             buttonSave: null,
+            hyperlinkOptions: null,
+            targetRadios: null,
+            relCheckboxes: null,
         };
 
         this.inputOpened = false;
@@ -82,37 +85,27 @@ export default class Hyperlink {
 
         let i;
 
+        // Hyperlink options
+        this.nodes.hyperlinkOptions = document.createElement('div');
+        this.nodes.hyperlinkOptions.classList.add(this.CSS.hyperlinkOptions)
+
         // Target
-        this.nodes.selectTarget = document.createElement('select');
-        this.nodes.selectTarget.classList.add(this.CSS.selectTarget);
-        this.addOption(this.nodes.selectTarget, this.i18n.t('Select target'), '');
-        for (i=0; i<this.targetAttributes.length; i++) {
-            this.addOption(this.nodes.selectTarget, this.targetAttributes[i], this.targetAttributes[i]);
-        }
-
-        if(!!this.config.target) {
-            if(this.targetAttributes.length === 0) {
-                this.addOption(this.nodes.selectTarget, this.config.target, this.config.target);
-            }
-
-            this.nodes.selectTarget.value = this.config.target;
-        }
+        this.nodes.targetRadios = document.createElement('div');
+        this.nodes.targetRadios.classList.add(this.CSS.targetRadios)
+        this.nodes.targetRadios.innerHTML = "<p>Target:</p>"
+        this.targetAttributes.forEach(item => {
+            this.addRadioOrCheckbox(this.nodes.targetRadios, "target", "radio", item, item === this.config.target);
+        });
+        this.nodes.hyperlinkOptions.appendChild(this.nodes.targetRadios)
 
         // Rel
-        this.nodes.selectRel = document.createElement('select');
-        this.nodes.selectRel.classList.add(this.CSS.selectRel);
-        this.addOption(this.nodes.selectRel, this.i18n.t('Select rel'), '');
-        for (i=0; i<this.relAttributes.length; i++) {
-            this.addOption(this.nodes.selectRel, this.relAttributes[i], this.relAttributes[i]);
-        }
-
-        if(!!this.config.rel) {
-            if(this.relAttributes.length === 0) {
-                this.addOption(this.nodes.selectTarget, this.config.rel, this.config.rel);
-            }
-
-            this.nodes.selectRel.value = this.config.rel;
-        }
+        this.nodes.relCheckboxes = document.createElement('div');
+        this.nodes.relCheckboxes.classList.add(this.CSS.relCheckboxes)
+        this.nodes.relCheckboxes.innerHTML = "<p>Rel:</p>"
+        this.relAttributes.forEach(item => {
+            this.addRadioOrCheckbox(this.nodes.relCheckboxes, "rel", "checkbox", item, item === this.config.rel);
+        });
+        this.nodes.hyperlinkOptions.appendChild(this.nodes.relCheckboxes)
 
         // Button
         this.nodes.buttonSave = document.createElement('a');
@@ -125,13 +118,7 @@ export default class Hyperlink {
         // append
         this.nodes.wrapper.appendChild(this.nodes.input);
 
-        if(!!this.targetAttributes && this.targetAttributes.length > 0) {
-            this.nodes.wrapper.appendChild(this.nodes.selectTarget);
-        }
-
-        if(!!this.relAttributes && this.relAttributes.length > 0) {
-            this.nodes.wrapper.appendChild(this.nodes.selectRel);
-        }
+        this.nodes.wrapper.appendChild(this.nodes.hyperlinkOptions);
 
         this.nodes.wrapper.appendChild(this.nodes.buttonSave);
 
@@ -192,8 +179,18 @@ export default class Hyperlink {
             const targetAttr = anchorTag.getAttribute('target');
             const relAttr = anchorTag.getAttribute('rel');
             this.nodes.input.value = !!hrefAttr ? hrefAttr : '';
-            this.nodes.selectTarget.value = !!targetAttr ? targetAttr : '';
-            this.nodes.selectRel.value = !!relAttr ? relAttr : '';
+
+            if (!!targetAttr) {
+                this.nodes.targetRadios.querySelector(`[value=${targetAttr}]`).checked = true
+            }
+
+            if (!!relAttr) {
+                const rels = relAttr.split(' ')
+                this.relAttributes.forEach(item => {
+                    this.nodes.relCheckboxes.querySelector(`[value=${item}]`).checked = rels.includes(item)
+                })
+            }
+
             this.selection.save();
         } else {
             this.nodes.button.classList.remove(this.CSS.buttonUnlink);
@@ -232,8 +229,6 @@ export default class Hyperlink {
         }
         this.nodes.wrapper.classList.remove(this.CSS.wrapperShowed);
         this.nodes.input.value = '';
-        this.nodes.selectTarget.value = '';
-        this.nodes.selectRel.value = '';
 
         if (clearSavedSelection) {
             this.selection.clearSaved();
@@ -247,8 +242,9 @@ export default class Hyperlink {
         event.stopImmediatePropagation();
 
         let value = this.nodes.input.value || '';
-        let target = this.nodes.selectTarget.value || '';
-        let rel = this.nodes.selectRel.value || '';
+        let target = this.nodes.targetRadios.querySelectorAll('[name=target]:checked')[0].value || '';
+        const rels = [...this.nodes.relCheckboxes.querySelectorAll('[name=rel]:checked')].map(item => item.value)
+        let rel = rels.join(' ') || '';
 
         if (!value.trim()) {
             this.selection.restore();
@@ -345,10 +341,25 @@ export default class Hyperlink {
         return icon;
     }
 
-    addOption(element, text, value=null) {
-        let option = document.createElement('option');
-        option.text = text;
-        option.value = value;
-        element.add(option);
+    addRadioOrCheckbox(element, name, type="radio", value=null, checked=false) {
+        const id = `${name}--${value}`;
+        const div = document.createElement('div');
+        div.classList.add(this.CSS.radioOrCheckbox)
+
+        const label = document.createElement('label');
+        label.innerText = value;
+        label.setAttribute("for", id);
+
+        const radio = document.createElement('input');
+        radio.type = type;
+        radio.name = name;
+        radio.id = id;
+        radio.value = value;
+        radio.checked = checked;
+
+        div.appendChild(radio);
+        div.appendChild(label);
+
+        element.appendChild(div);
     }
 }
